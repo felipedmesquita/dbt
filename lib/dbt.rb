@@ -1,4 +1,4 @@
-require 'dbt/model.rb'
+
 module Dbt
   def self.run
     file_paths = Dir.glob("app/sql/**/*.sql")
@@ -11,3 +11,5 @@ module Dbt
   end
 
 end
+
+require 'dbt/model.rb'
