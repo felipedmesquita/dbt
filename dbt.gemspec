@@ -1,6 +1,6 @@
 Gem::Specification.new do |s|
   s.name        = "dbt"
-  s.version     = "0.0.2"
+  s.version     = "0.0.3"
   s.summary     = "Dbt"
   s.description = "A simple hello world gem"
   s.authors     = ["Felipe Mesquita"]
