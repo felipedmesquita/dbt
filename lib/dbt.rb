@@ -1,5 +1,5 @@
+require 'dbt/model.rb'
 module Dbt
-
   def self.run
     file_paths = Dir.glob("app/sql/**/*.sql")
     models = file_paths.map {|fp| Model.new fp }
