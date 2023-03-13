@@ -1,6 +1,6 @@
 Gem::Specification.new do |s|
   s.name        = "dbt"
-  s.version     = "0.0.5"
+  s.version     = "0.0.6"
   s.summary     = "Dbt"
   s.description = "A simple hello world gem"
   s.authors     = ["Felipe Mesquita"]
@@ -10,4 +10,5 @@ Gem::Specification.new do |s|
   s.license     = "MIT"
 
   s.add_dependency 'dagwood', '~> 1.0'
+  s.add_dependency 'zeitwerk'
 end

@@ -2,6 +2,8 @@ require "zeitwerk"
 loader = Zeitwerk::Loader.for_gem
 loader.setup
 
+require 'dagwood'
+
 module Dbt
   def self.run
     file_paths = Dir.glob("app/sql/**/*.sql")
