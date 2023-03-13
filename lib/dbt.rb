@@ -1,3 +1,6 @@
+require "zeitwerk"
+loader = Zeitwerk::Loader.for_gem
+loader.setup
 
 module Dbt
   def self.run
@@ -11,5 +14,3 @@ module Dbt
   end
 
 end
-
-require 'dbt/model.rb'
