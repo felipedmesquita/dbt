@@ -11,13 +11,13 @@ class Dbt::Model
     @materialize_as = ""
 
     def source(table)
-      @sources << table
+      @sources << table.to_s
       table.to_s
     end
 
     def ref(model)
-      @refs << model
-      "felipe_dbt.#{model}"
+      @refs << model.to_s
+      "#{Dbt::SCHEMA}.#{model}"
     end
 
     def materialize
@@ -31,8 +31,8 @@ class Dbt::Model
   def build
     puts "BUILDING #{@name}"
     ActiveRecord::Base.connection.execute <<~SQL
-      #{drop_relation SCHEMA, @name}
-      CREATE #{materialize_as} VIEW #{SCHEMA}.#{@name} AS (
+      #{drop_relation Dbt::SCHEMA, @name}
+      CREATE #{materialize_as} VIEW #{Dbt::SCHEMA}.#{@name} AS (
         #{@code}
       );
     SQL
@@ -40,7 +40,7 @@ class Dbt::Model
   end
 
   def drop_relation schema, relation
-    type = ActiveRecord::Base.execute("
+    type = ActiveRecord::Base.connection.execute("
     SELECT
       CASE c.relkind
         WHEN 'r' THEN 'TABLE'
@@ -50,9 +50,9 @@ class Dbt::Model
     FROM pg_class c
     JOIN pg_namespace n ON n.oid = c.relnamespace
     WHERE c.relname = '#{relation}' AND n.nspname = '#{schema}';"
-    ).values.first.first
+    ).values.first&.first
     unless type.nil?
-      "DROP #{type} #{schema}.#{relation} CASCADE"
+      "DROP #{type} #{schema}.#{relation} CASCADE;"
     end
   end
 
