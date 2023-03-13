@@ -31,14 +31,29 @@ class Dbt::Model
   def build
     puts "BUILDING #{@name}"
     ActiveRecord::Base.connection.execute <<~SQL
-      DROP TABLE IF EXISTS felipe_dbt.#{@name} CASCADE;
-      DROP MATERIALIZED VIEW IF EXISTS felipe_dbt.#{@name} CASCADE;
-      DROP VIEW IF EXISTS felipe_dbt.#{@name} CASCADE;
-      CREATE #{materialize_as} VIEW felipe_dbt.#{@name} AS (
+      #{drop_relation SCHEMA, @name}
+      CREATE #{materialize_as} VIEW #{SCHEMA}.#{@name} AS (
         #{@code}
       );
     SQL
     @built = true
+  end
+
+  def drop_relation schema, relation
+    type = ActiveRecord::Base.execute("
+    SELECT
+      CASE c.relkind
+        WHEN 'r' THEN 'TABLE'
+        WHEN 'v' THEN 'VIEW'
+        WHEN 'm' THEN 'MATERIALIZED VIEW'
+      END AS relation_type
+    FROM pg_class c
+    JOIN pg_namespace n ON n.oid = c.relnamespace
+    WHERE c.relname = '#{relation}' AND n.nspname = '#{schema}';"
+    ).values.first.first
+    unless type.nil?
+      "DROP #{type} #{schema}.#{relation} CASCADE"
+    end
   end
 
 end

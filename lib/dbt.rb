@@ -5,8 +5,10 @@ loader.setup
 require 'dagwood'
 
 module Dbt
+  SCHEMA = "felipe_dbt"
+
   def self.run
-    ActiveRecord::Base.connection.execute "CREATE SCHEMA IF NOT EXISTS felipe_dbt"
+    ActiveRecord::Base.connection.execute "CREATE SCHEMA IF NOT EXISTS #{SCHEMA}"
     file_paths = Dir.glob("app/sql/**/*.sql")
     models = file_paths.map {|fp| Model.new fp }
     dependencies = models.map {|m| {m.name => m.refs}}.reduce({}, :merge!)
