@@ -1,3 +1,4 @@
+require 'graphviz'
 module Dbt
   class Runner
       class << self
@@ -8,9 +9,12 @@ module Dbt
           dependencies = models.map {|m| {m.name => m.refs}}.reduce({}, :merge!)
           check_if_all_refs_have_sql_files dependencies
           graph = Dagwood::DependencyGraph.new dependencies
+          md = Mermaid.markdown_for dependencies
+          Mermaid.generate_file md
           graph.order.each do |model_name|
             models.find {|m| m.name == model_name}.build
           end
+
         end
 
         def check_if_all_refs_have_sql_files dependencies
@@ -19,11 +23,7 @@ module Dbt
             raise "Missing .sql model files for ref #{sem_arquivo} in model #{key}" unless sem_arquivo.empty?
           end
         end
-
-
       end
-
-
 
   end
 end
