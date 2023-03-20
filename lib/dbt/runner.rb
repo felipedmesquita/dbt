@@ -1,4 +1,3 @@
-require 'graphviz'
 module Dbt
   class Runner
       class << self
