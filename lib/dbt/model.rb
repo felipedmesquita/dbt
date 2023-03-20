@@ -1,7 +1,7 @@
 module Dbt
   class Model
 
-    attr_reader :name, :code, :materialize_as, :sources, :refs, :built, :filepath
+    attr_reader :name, :code, :materialize_as, :sources, :refs, :built, :filepath, :skip
     def initialize filepath
       @filepath = filepath
       @name = File.basename(filepath, '.sql')
@@ -26,18 +26,27 @@ module Dbt
         ""
       end
 
+      def skip
+        @skip = true
+        ""
+      end
+
       @code = ERB.new(@original_code).result(binding)
     end
 
     def build
-      puts "BUILDING #{@name}"
-      ActiveRecord::Base.connection.execute <<~SQL
-        #{drop_relation SCHEMA, @name}
-        CREATE #{materialize_as} VIEW #{SCHEMA}.#{@name} AS (
-          #{@code}
-        );
-      SQL
-      @built = true
+      if @skip
+        puts "SKIPPING #{@name}"
+      else
+        puts "BUILDING #{@name}"
+        ActiveRecord::Base.connection.execute <<~SQL
+          #{drop_relation SCHEMA, @name}
+          CREATE #{materialize_as} VIEW #{SCHEMA}.#{@name} AS (
+            #{@code}
+          );
+        SQL
+        @built = true
+      end
     end
 
     def drop_relation schema, relation
