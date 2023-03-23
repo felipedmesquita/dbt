@@ -4,7 +4,7 @@ module Dbt
     class << self
 
       def markdown_for dag
-        mermaid = "graph TD\n"
+        mermaid = "flowchart TD\n"
         dag.each do |model, dependencies|
           mermaid += "#{model}\n"
           dependencies.each do |dependency|

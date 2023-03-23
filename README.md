@@ -22,9 +22,9 @@ WHERE extractor_class =  'ExampleTap'
 #### Responses with multiple items
 Use jsonb_path_query to split arrays of items to individual records
 ```sql
--- example_cleaned_unrolled.sql
+-- example_cleaned.sql
 SELECT
-  jsonb_path_query(response_options, '$.response_body[*].body.id') AS unique_by,
+  jsonb_path_query(response_options, '$.response_body[*].body.id') #>> '{}' AS unique_by,
   created_at,
   id AS request_id,
   jsonb_path_query(response_options, '$.response_body[*].body') body
