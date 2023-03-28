@@ -1,9 +1,8 @@
-require 'base64'
+require "base64"
 module Dbt
   class Mermaid
     class << self
-
-      def markdown_for dag
+      def markdown_for(dag)
         mermaid = "flowchart TD\n"
         dag.each do |model, dependencies|
           mermaid += "#{model}\n"
@@ -14,15 +13,24 @@ module Dbt
         mermaid
       end
 
-      def encode_to_editor_url md
-        json = {code: md, :mermaid=>{theme: "default"}, :updateEditor=>false, :autoSync=>true, :updateDiagram=>false}
-        encoded = Base64.urlsafe_encode64(json.to_json.force_encoding('ASCII'))
+      # does not work
+      def encode_to_editor_url(md)
+        json = {
+          code: md,
+          mermaid: {
+            theme: "default"
+          },
+          updateEditor: false,
+          autoSync: true,
+          updateDiagram: false
+        }
+        encoded = Base64.urlsafe_encode64(json.to_json.force_encoding("ASCII"))
         "https://mermaid.ink/img/#{encoded}"
         #url = encode_mermaid(diagram)
         encoded
       end
 
-      def generate_file chart
+      def generate_file(chart)
         html = <<~HTML
           <!DOCTYPE html>
             <html lang="en">
@@ -37,10 +45,8 @@ module Dbt
             </html>
             HTML
 
-        File.write('dependencies.html', html)
+        File.write("dependencies.html", html)
       end
-
     end
-
   end
 end

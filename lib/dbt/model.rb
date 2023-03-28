@@ -1,15 +1,23 @@
 module Dbt
   class Model
+    attr_reader :name,
+                :code,
+                :materialize_as,
+                :sources,
+                :refs,
+                :built,
+                :filepath,
+                :skip
 
-    attr_reader :name, :code, :materialize_as, :sources, :refs, :built, :filepath, :skip
-    def initialize filepath
+    def initialize(filepath, schema = SCHEMA)
       @filepath = filepath
-      @name = File.basename(filepath, '.sql')
+      @name = File.basename(filepath, ".sql")
       @original_code = File.read(filepath)
       @sources = []
       @refs = []
       @built = false
       @materialize_as = ""
+      @schema = schema
 
       def source(table)
         @sources << table.to_s
@@ -18,7 +26,7 @@ module Dbt
 
       def ref(model)
         @refs << model.to_s
-        "#{SCHEMA}.#{model}"
+        "#{@schema}.#{model}"
       end
 
       def materialize
@@ -40,8 +48,8 @@ module Dbt
       else
         puts "BUILDING #{@name}"
         ActiveRecord::Base.connection.execute <<~SQL
-          #{drop_relation SCHEMA, @name}
-          CREATE #{materialize_as} VIEW #{SCHEMA}.#{@name} AS (
+          #{drop_relation @schema, @name}
+          CREATE #{materialize_as} VIEW #{@schema}.#{@name} AS (
             #{@code}
           );
         SQL
@@ -49,8 +57,12 @@ module Dbt
       end
     end
 
-    def drop_relation schema, relation
-      type = ActiveRecord::Base.connection.execute("
+    def drop_relation(schema, relation)
+      type =
+        ActiveRecord::Base
+          .connection
+          .execute(
+            "
       SELECT
         CASE c.relkind
           WHEN 'r' THEN 'TABLE'
@@ -60,11 +72,11 @@ module Dbt
       FROM pg_class c
       JOIN pg_namespace n ON n.oid = c.relnamespace
       WHERE c.relname = '#{relation}' AND n.nspname = '#{schema}';"
-      ).values.first&.first
-      unless type.nil?
-        "DROP #{type} #{schema}.#{relation} CASCADE;"
-      end
+          )
+          .values
+          .first
+          &.first
+      "DROP #{type} #{schema}.#{relation} CASCADE;" unless type.nil?
     end
-
   end
 end
