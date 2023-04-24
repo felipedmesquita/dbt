@@ -11,6 +11,7 @@ module Dbt
         graph = Dagwood::DependencyGraph.new dependencies
         md = Mermaid.markdown_for dependencies
         Mermaid.generate_file md
+        binding.irb
         graph.order.each do |model_name|
           models.find { |m| m.name == model_name }.build
         end

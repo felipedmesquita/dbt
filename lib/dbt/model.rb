@@ -7,7 +7,8 @@ module Dbt
                 :refs,
                 :built,
                 :filepath,
-                :skip
+                :skip,
+                :fingerprint
 
     def initialize(filepath, schema = SCHEMA)
       @filepath = filepath
@@ -40,6 +41,7 @@ module Dbt
       end
 
       @code = ERB.new(@original_code).result(binding)
+      @fingerprint = PgQuery.fingerprint(@code)
     end
 
     def build
