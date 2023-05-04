@@ -39,8 +39,6 @@ module Dbt
         case kind.to_s.downcase
           when "view"
             @materialize_as = "VIEW"
-          when "materialized view" || "materialized_view"
-            @materialize_as = "MATERIALIZED VIEW"
           when "table"
             @materialize_as = "TABLE"
           when "incremental"
@@ -111,12 +109,30 @@ module Dbt
 
       else
         puts "BUILDING #{@name}"
-        ActiveRecord::Base.connection.execute <<~SQL
-          #{drop_relation @schema, @name}
-          CREATE #{materialize_as} #{@schema}.#{@name} AS (
-            #{@code}
-          );
-        SQL
+        case @materialize_as
+          when "VIEW"
+            ActiveRecord::Base.connection.execute <<~SQL
+              CREATE OR REPLACE VIEW #{this} AS (
+                #{@code}
+              );
+            SQL
+          when "TABLE"
+            temp_table = "#{@schema}.#{@name}_build_step_temp_table"
+            ActiveRecord::Base.connection.execute <<~SQL
+              DROP TABLE IF EXISTS #{temp_table};
+              CREATE TABLE #{temp_table} AS (
+                #{@code}
+              );
+              BEGIN;
+              DROP TABLE IF EXISTS #{this} CASCADE;
+              ALTER TABLE #{temp_table} RENAME TO #{@name};
+              DROP TABLE IF EXISTS #{temp_table};
+              COMMIT;
+            SQL
+          else
+            raise "Invalid materialize_as: #{@materialize_as}"
+        end
+
         @built = true
       end
     end
