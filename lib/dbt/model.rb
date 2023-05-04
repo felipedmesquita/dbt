@@ -7,7 +7,9 @@ module Dbt
                 :refs,
                 :built,
                 :filepath,
-                :skip
+                :skip,
+                :is_incremental,
+                :unique_by_column
 
     def initialize(filepath, schema = SCHEMA)
       @filepath = filepath
@@ -16,7 +18,7 @@ module Dbt
       @sources = []
       @refs = []
       @built = false
-      @materialize_as = ""
+      @materialize_as = "VIEW"
       @schema = schema
 
       def source(table)
@@ -29,8 +31,36 @@ module Dbt
         "#{@schema}.#{model}"
       end
 
+      def this
+        "#{@schema}.#{@name}"
+      end
+
+      def build_as kind, unique_by: "unique_by"
+        case kind.to_s.downcase
+          when "view"
+            @materialize_as = "VIEW"
+          when "materialized view" || "materialized_view"
+            @materialize_as = "MATERIALIZED VIEW"
+          when "table"
+            @materialize_as = "TABLE"
+          when "incremental"
+            if get_relation_type(@schema, @name) != "TABLE"
+              @materialize_as = "TABLE"
+              @is_incremental = false
+            else
+              @is_incremental = true
+              @unique_by_column = unique_by
+            end
+        else
+          raise "Invalid build_as materialization: #{kind}"
+        end
+        ""
+      end
+
       def materialize
-        @materialize_as = "MATERIALIZED"
+        # legacy, use build_as :table
+        # will add warning in the future
+        build_as :table
         ""
       end
 
@@ -45,11 +75,45 @@ module Dbt
     def build
       if @skip
         puts "SKIPPING #{@name}"
+      elsif @is_incremental
+        puts "INCREMENTAL #{@name}"
+        temp_table = "#{@schema}.#{@name}_incremental_build_temp_table"
+
+        # drop the temp table if it exists
+        ActiveRecord::Base.connection.execute <<~SQL
+        DROP TABLE IF EXISTS #{temp_table};
+        SQL
+
+        # create a temp table with the same schema as the source
+        ActiveRecord::Base.connection.execute <<~SQL
+          CREATE TABLE #{temp_table} AS (
+            #{code}
+          );
+        SQL
+
+        # delete rows from the table that are in the source
+        ActiveRecord::Base.connection.execute <<~SQL
+          DELETE FROM #{this}
+          USING #{temp_table}
+          WHERE #{this}.#{unique_by_column} = #{temp_table}.#{unique_by_column};
+        SQL
+
+        # insert rows from the source into the table
+        ActiveRecord::Base.connection.execute <<~SQL
+          INSERT INTO #{this}
+          SELECT * FROM #{temp_table};
+        SQL
+
+        # drop the temp table
+        ActiveRecord::Base.connection.execute <<~SQL
+          DROP TABLE #{temp_table};
+        SQL
+
       else
         puts "BUILDING #{@name}"
         ActiveRecord::Base.connection.execute <<~SQL
           #{drop_relation @schema, @name}
-          CREATE #{materialize_as} VIEW #{@schema}.#{@name} AS (
+          CREATE #{materialize_as} #{@schema}.#{@name} AS (
             #{@code}
           );
         SQL
@@ -58,6 +122,11 @@ module Dbt
     end
 
     def drop_relation(schema, relation)
+      type = get_relation_type(schema, relation)
+      "DROP #{type} #{schema}.#{relation} CASCADE;" unless type.nil?
+    end
+
+    def get_relation_type(schema, relation)
       type =
         ActiveRecord::Base
           .connection
@@ -76,7 +145,6 @@ module Dbt
           .values
           .first
           &.first
-      "DROP #{type} #{schema}.#{relation} CASCADE;" unless type.nil?
     end
   end
 end
