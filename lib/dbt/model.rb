@@ -42,7 +42,7 @@ module Dbt
           when "table"
             @materialize_as = "TABLE"
           when "incremental"
-            if get_relation_type(@schema, @name) != "TABLE"
+            if get_relation_type(this) != "TABLE"
               @materialize_as = "TABLE"
               @is_incremental = false
             else
@@ -109,12 +109,16 @@ module Dbt
 
       else
         puts "BUILDING #{@name}"
+        curent_relation_type = get_relation_type(this)
         case @materialize_as
           when "VIEW"
             ActiveRecord::Base.connection.execute <<~SQL
+              BEGIN;
+              #{drop_relation(this) unless curent_relation_type == "VIEW"}
               CREATE OR REPLACE VIEW #{this} AS (
                 #{@code}
               );
+              COMMIT;
             SQL
           when "TABLE"
             temp_table = "#{@schema}.#{@name}_build_step_temp_table"
@@ -124,7 +128,7 @@ module Dbt
                 #{@code}
               );
               BEGIN;
-              DROP TABLE IF EXISTS #{this} CASCADE;
+              #{drop_relation(this)}
               ALTER TABLE #{temp_table} RENAME TO #{@name};
               DROP TABLE IF EXISTS #{temp_table};
               COMMIT;
@@ -137,12 +141,18 @@ module Dbt
       end
     end
 
-    def drop_relation(schema, relation)
-      type = get_relation_type(schema, relation)
-      "DROP #{type} #{schema}.#{relation} CASCADE;" unless type.nil?
+    def drop_relation(relation)
+      type = get_relation_type(relation)
+      puts "Dropping #{type} #{relation}"
+      if type.present?
+        "DROP #{type} #{relation} CASCADE;"
+      else
+        ""
+      end
     end
 
-    def get_relation_type(schema, relation)
+    def get_relation_type(relation)
+      relnamespace, relname = relation.split(".")
       type =
         ActiveRecord::Base
           .connection
@@ -156,7 +166,7 @@ module Dbt
         END AS relation_type
       FROM pg_class c
       JOIN pg_namespace n ON n.oid = c.relnamespace
-      WHERE c.relname = '#{relation}' AND n.nspname = '#{schema}';"
+      WHERE c.relname = '#{relname}' AND n.nspname = '#{relnamespace}';"
           )
           .values
           .first
