@@ -143,7 +143,6 @@ module Dbt
 
     def drop_relation(relation)
       type = get_relation_type(relation)
-      puts "Dropping #{type} #{relation}"
       if type.present?
         "DROP #{type} #{relation} CASCADE;"
       else
