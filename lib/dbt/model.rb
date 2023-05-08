@@ -75,6 +75,7 @@ module Dbt
         puts "SKIPPING #{@name}"
       elsif @is_incremental
         puts "INCREMENTAL #{@name}"
+        assert_column_uniqueness(unique_by_column, this)
         temp_table = "#{@schema}.#{@name}_incremental_build_temp_table"
 
         # drop the temp table if it exists
@@ -88,7 +89,7 @@ module Dbt
             #{code}
           );
         SQL
-
+        assert_column_uniqueness(unique_by_column, temp_table)
         # delete rows from the table that are in the source
         ActiveRecord::Base.connection.execute <<~SQL
           DELETE FROM #{this}
@@ -170,6 +171,16 @@ module Dbt
           .values
           .first
           &.first
+    end
+
+    def assert_column_uniqueness(column, relation)
+      result = ActiveRecord::Base.connection.execute <<~SQL
+        SELECT COUNT(*) = COUNT(DISTINCT #{column}) FROM #{relation};
+      SQL
+      if result.values.first.first == false
+        raise "Column #{column} is not unique in #{relation}"
+      end
+      true
     end
   end
 end
