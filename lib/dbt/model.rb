@@ -1,5 +1,7 @@
 module Dbt
   class Model
+    include SqlTemplateHelpers
+
     attr_reader :name,
                 :code,
                 :materialize_as,
