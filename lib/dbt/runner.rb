@@ -1,7 +1,8 @@
 module Dbt
   class Runner
     class << self
-      def run(schema = SCHEMA)
+      def run(custom_schema=nil)
+        schema = custom_schema || Dbt::settings['schema'] || Dbt::SCHEMA
         ActiveRecord::Base.connection.execute "CREATE SCHEMA IF NOT EXISTS #{schema}"
         file_paths = Dir.glob("app/sql/**/*.sql")
         models = file_paths.map { |fp| Model.new(fp, schema) }
