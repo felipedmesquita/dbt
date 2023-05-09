@@ -34,7 +34,7 @@ module Dbt
     def x_except *keys
       not_in_clause = keys.map { |key| "''#{key}''" }
       .join('or @t = ')
-      "xpath('//cmd[not(@t = #{not_in_clause})]', xml_completo)"
+      "xpath('//cmd[not(@t = #{not_in_clause})]', body)"
     end
 
   end
