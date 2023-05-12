@@ -1,6 +1,11 @@
 module Dbt
   module SqlTemplateHelpers
 
+    def star relation, *exclued_columns
+      columns = ActiveRecord::Base.connection.execute("select * from #{relation} limit 0").fields - exclued_columns.map(&:to_s)
+      columns.map { |column| "#{relation}.#{column}" }.join(', ')
+    end
+
     ### JSON SQL helpers
     def j(key)
       "body ->> '#{key}' #{key.underscore}"
