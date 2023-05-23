@@ -29,6 +29,14 @@ module Dbt
     end
 
     def x_numeric(key)
+      # x_numeric was replacing '.' and ',' to '' and '.' to convert to numeric
+      # which should be done by x_numeric_comma.
+      puts "WARNING: x_numeric will not change , to . in a future version. Use x_numeric_comma instead."
+      #"(xpath('//cmd[@t=''#{key}'']/text()', body))[1]::numeric #{key.underscore}"
+      x_numeric_comma(key)
+    end
+
+    def x_numeric_comma(key)
       "REPLACE(REPLACE((xpath('/xjx/cmd[@t=''#{key}'']/text()', body))[1]::text, '.', ''), ',', '.')::numeric #{key.underscore}"
     end
 
