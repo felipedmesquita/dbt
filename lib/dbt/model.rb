@@ -117,8 +117,8 @@ module Dbt
           when "VIEW"
             ActiveRecord::Base.connection.execute <<~SQL
               BEGIN;
-              #{drop_relation(this) unless curent_relation_type == "VIEW"}
-              CREATE OR REPLACE VIEW #{this} AS (
+              #{drop_relation(this)}
+              CREATE VIEW #{this} AS (
                 #{@code}
               );
               COMMIT;
