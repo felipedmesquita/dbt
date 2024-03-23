@@ -11,7 +11,7 @@ module Dbt
         check_if_all_refs_have_sql_files dependencies
         graph = Dagwood::DependencyGraph.new dependencies
         md = Mermaid.markdown_for dependencies
-        Mermaid.generate_file md
+        # Mermaid.generate_file md
         graph.order.each do |model_name|
           models.find { |m| m.name == model_name }.build
         end
