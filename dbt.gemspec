@@ -11,4 +11,5 @@ Gem::Specification.new do |s|
 
   s.add_dependency 'dagwood', '~> 1.0'
   s.add_dependency 'zeitwerk'
+  s.add_dependency 'duckdb'
 end

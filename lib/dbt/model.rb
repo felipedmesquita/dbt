@@ -20,21 +20,30 @@ module Dbt
       @sources = []
       @refs = []
       @built = false
-      @materialize_as = "VIEW"
+      @materialize_as = "TABLE"
       @schema = schema
 
       def source(table)
         @sources << table.to_s
-        table.to_s
+        "postgres.#{table}"
       end
 
       def ref(model)
         @refs << model.to_s
-        "#{@schema}.#{model}"
+        # "#{@schema}.#{model}"
+        model.to_s
       end
 
       def this
-        "#{@schema}.#{@name}"
+        if @final
+          "postgres.#{@schema}.#{@name}"
+        else
+          @name.to_s
+        end
+      end
+
+      def final
+        @final = true
       end
 
       def build_as kind, unique_by: "unique_by"
@@ -72,41 +81,42 @@ module Dbt
       @code = ERB.new(@original_code).result(binding)
     end
 
-    def build
+    def build duckdb_connection=nil
+      puts "duck"
       if @skip
         puts "SKIPPING #{@name}"
       elsif @is_incremental
         puts "INCREMENTAL #{@name}"
         assert_column_uniqueness(unique_by_column, this)
-        temp_table = "#{@schema}.#{@name}_incremental_build_temp_table"
+        temp_table = "#{@name}_incremental_build_temp_table"
 
         # drop the temp table if it exists
-        ActiveRecord::Base.connection.execute <<~SQL
+        duckdb_connection.query <<~SQL
         DROP TABLE IF EXISTS #{temp_table};
         SQL
 
         # create a temp table with the same schema as the source
-        ActiveRecord::Base.connection.execute <<~SQL
+        duckdb_connection.query <<~SQL
           CREATE TABLE #{temp_table} AS (
             #{code}
           );
         SQL
         assert_column_uniqueness(unique_by_column, temp_table)
         # delete rows from the table that are in the source
-        ActiveRecord::Base.connection.execute <<~SQL
+        duckdb_connection.query <<~SQL
           DELETE FROM #{this}
           USING #{temp_table}
           WHERE #{this}.#{unique_by_column} = #{temp_table}.#{unique_by_column};
         SQL
 
         # insert rows from the source into the table
-        ActiveRecord::Base.connection.execute <<~SQL
+        duckdb_connection.query <<~SQL
           INSERT INTO #{this}
           SELECT * FROM #{temp_table};
         SQL
 
         # drop the temp table
-        ActiveRecord::Base.connection.execute <<~SQL
+        duckdb_connection.query <<~SQL
           DROP TABLE #{temp_table};
         SQL
 
@@ -115,7 +125,7 @@ module Dbt
         curent_relation_type = get_relation_type(this)
         case @materialize_as
           when "VIEW"
-            ActiveRecord::Base.connection.execute <<~SQL
+            duckdb_connection.query <<~SQL
               BEGIN;
               #{drop_relation(this)}
               CREATE VIEW #{this} AS (
@@ -124,17 +134,12 @@ module Dbt
               COMMIT;
             SQL
           when "TABLE"
-            temp_table = "#{@schema}.#{@name}_build_step_temp_table"
-            ActiveRecord::Base.connection.execute <<~SQL
-              DROP TABLE IF EXISTS #{temp_table};
-              CREATE TABLE #{temp_table} AS (
+            duckdb_connection.query <<~SQL
+              DROP TABLE IF EXISTS #{this};
+              DROP VIEW IF EXISTS #{this};
+              CREATE TABLE #{this} AS (
                 #{@code}
               );
-              BEGIN;
-              #{drop_relation(this)}
-              ALTER TABLE #{temp_table} RENAME TO #{@name};
-              DROP TABLE IF EXISTS #{temp_table};
-              COMMIT;
             SQL
           else
             raise "Invalid materialize_as: #{@materialize_as}"
@@ -145,38 +150,19 @@ module Dbt
     end
 
     def drop_relation(relation)
-      type = get_relation_type(relation)
-      if type.present?
-        "DROP #{type} #{relation} CASCADE;"
-      else
-        ""
-      end
+      # type = get_relation_type(relation)
+      # if type.present?
+        "DROP TABLE IF EXISTS #{relation};"
+      # else
+        # ""
     end
 
     def get_relation_type(relation)
-      relnamespace, relname = relation.split(".")
-      type =
-        ActiveRecord::Base
-          .connection
-          .execute(
-            "
-      SELECT
-        CASE c.relkind
-          WHEN 'r' THEN 'TABLE'
-          WHEN 'v' THEN 'VIEW'
-          WHEN 'm' THEN 'MATERIALIZED VIEW'
-        END AS relation_type
-      FROM pg_class c
-      JOIN pg_namespace n ON n.oid = c.relnamespace
-      WHERE c.relname = '#{relname}' AND n.nspname = '#{relnamespace}';"
-          )
-          .values
-          .first
-          &.first
+          "TABLE"
     end
 
     def assert_column_uniqueness(column, relation)
-      result = ActiveRecord::Base.connection.execute <<~SQL
+      result = duckdb_connection.query <<~SQL
         SELECT COUNT(*) = COUNT(DISTINCT #{column}) FROM #{relation};
       SQL
       if result.values.first.first == false

@@ -3,6 +3,7 @@ loader = Zeitwerk::Loader.for_gem
 loader.setup
 
 require "dagwood"
+require 'duckdb'
 
 module Dbt
   SCHEMA = "felipe_dbt"
