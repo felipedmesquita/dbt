@@ -12,8 +12,10 @@ module Dbt
         graph = Dagwood::DependencyGraph.new dependencies
         md = Mermaid.markdown_for dependencies
         Mermaid.generate_file md
-        graph.order.each do |model_name|
-          models.find { |m| m.name == model_name }.build
+        graph.parallel_order.each do |group|
+          Parallel.each(group, in_threads: Parallel.processor_count) do |model_name|
+            models.find { |m| m.name == model_name }.build
+          end
         end
       end
 

@@ -141,6 +141,7 @@ module Dbt
         end
 
         @built = true
+        puts "FINISHED #{this}"
       end
     end
 
