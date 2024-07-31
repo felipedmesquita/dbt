@@ -35,6 +35,7 @@ module Dbt
           <!DOCTYPE html>
             <html lang="en">
               <body>
+                <style>svg { max-width: none; width: 2000px; }</style>
                 <pre class="mermaid">
                 #{chart}
                 </pre>
