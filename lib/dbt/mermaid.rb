@@ -46,7 +46,11 @@ module Dbt
             </html>
             HTML
 
-        File.write("dependencies.html", html)
+        begin
+          File.write("dependencies.html", html)
+        rescue Errno::EACCES => e
+          puts "Failed to write to file: #{e.message}"
+        end
       end
     end
   end
