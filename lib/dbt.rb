@@ -21,4 +21,8 @@ module Dbt
   def self.run(...)
     Runner.run(...)
   end
+
+  def self.test(...)
+    Runner.test(...)
+  end
 end
