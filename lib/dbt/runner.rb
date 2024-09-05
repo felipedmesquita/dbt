@@ -1,10 +1,10 @@
 module Dbt
   class Runner
     class << self
-      def run(custom_schema=nil)
-        schema = custom_schema || Dbt::settings['schema'] || Dbt::SCHEMA
+      def run(custom_schema = nil, glob_path = "app/sql/**/*.sql")
+        schema = custom_schema || Dbt.settings["schema"] || Dbt::SCHEMA
         ActiveRecord::Base.connection.execute "CREATE SCHEMA IF NOT EXISTS #{schema}"
-        file_paths = Dir.glob("app/sql/**/*.sql")
+        file_paths = Dir.glob(glob_path)
         models = file_paths.map { |fp| Model.new(fp, schema) }
         dependencies =
           models.map { |m| { m.name => m.refs } }.reduce({}, :merge!)
@@ -15,6 +15,17 @@ module Dbt
         graph.order.each do |model_name|
           models.find { |m| m.name == model_name }.build
         end
+      end
+
+      def test
+        puts "Running tests..."
+        schema = Dbt.settings["schema"] || Dbt::SCHEMA
+        tables = run(schema, "app/sql_test/**/*.sql")
+        tables.each do |table|
+          puts "TEST #{table}"
+          raise "Table #{table} is not empty" unless ActiveRecord::Base.connection.execute("SELECT COUNT(*) FROM #{schema}.#{table}").to_a[0]["count"] == 0
+        end
+        puts "All tests passed!"
       end
 
       def check_if_all_refs_have_sql_files(dependencies)
