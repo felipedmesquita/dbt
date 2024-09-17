@@ -12,9 +12,18 @@ module Dbt
         graph = Dagwood::DependencyGraph.new dependencies
         md = Mermaid.markdown_for dependencies
         Mermaid.generate_file md
+        metrics_recorder = MetricsRecorder.new(schema)
         graph.order.each do |model_name|
-          models.find { |m| m.name == model_name }.build
+          model = models.find { |m| m.name == model_name }
+          start_time = Time.now
+          model.build
+          end_time = Time.now
+          # Record the timing data
+          metrics_recorder.record(model.name, model.filepath, start_time, end_time)
         end
+        # Save all metrics after the run completes
+        metrics_recorder.save
+        graph.order
       end
 
       def test
