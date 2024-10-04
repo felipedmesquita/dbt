@@ -33,7 +33,7 @@ WHERE extractor_class = 'MultipleItemsTap'
 ```
 ### 2. Deduplicate
 ```sql
--- example_cleaned_deduplicated.sql
+-- example_deduplicated.sql
 SELECT
   DISTINCT ON(unique_by)
   *
@@ -44,18 +44,18 @@ ORDER BY unique_by, created_at DESC
 ```sql
 -- example_model.sql
 SELECT
-  body -> 'id' AS id,
-  body -> 'userId' AS user_id,
-  body -> 'title' AS title,
-  body -> 'body' AS body
-FROM <%= ref('example_cleaned_deduplicated') %>
+  body ->> 'id' AS id,
+  body ->> 'userId' AS user_id,
+  body ->> 'title' AS title,
+  body ->> 'body' AS body
+FROM <%= ref('example_deduplicated') %>
 ```
 ## Using SQL models as Active Record models
 SQL models are currently materialized as either views or materialized views, those can be used as tables backing Active Record models, but are inherently read-only. To use a SQL model as an Active Record model, create a ruby file in app/models  defining a class that inherits from ApplicationRecord. Remember that for Zeitwert to autoload your file it should follow the naming conventions (class name should be the CamelCase version of the snake_case file name: inventory_transfer.rb defines `class InventoryTranfer`.
 ```ruby
 # app/models/example_name.rb
 class ExampleName < ApplicationRecord
-  self.table_name = "#{Dbt::SCHEMA}.example_model"
+  self.table_name = "felipe_dbt.example_model"
 end
 ```
 This, after re-entering the rails console, enables queries like:
