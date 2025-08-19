@@ -11,20 +11,6 @@ Use `Rdt.run` to build your models:
 Rdt.run
 ```
 
-> [!NOTE] 
-> This gem is being renamed to **rdt (ruby data tool)** so it can be published in rubygems.
-
-## Name change
-1. Replace `gem "dbt", github: "felipedmesquita/dbt"` with `gem "rdt"`
-2. Done
-
-- Prefer `Rdt.run` in new apps, `Dbt.run` still works
-- `config/rdt.yml` takes precedence over `config/dbt.yml`
-
-#### Planed breaking changes
-You can pin unmaintaned old apps to `gem "rdt", "= 0.1.1`.
-- The default schema will be changed from `felipe_dbt` to `rdt`
-- Use of the Dbt namespace will first emmit deprecation warnings, and then be removed in a future version
 
 ## Resources from the Extractor gem
 Basic steps to clean, deduplicate and model Extractor results:
