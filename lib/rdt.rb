@@ -24,6 +24,14 @@ module Rdt
     Runner.run(...)
   end
 
+  def self.run_only(...)
+    Runner.run_only(...)
+  end
+
+  def self.run_except(...)
+    Runner.run_except(...)
+  end
+
   def self.test(...)
     Runner.test(...)
   end
