@@ -11,6 +11,16 @@ Use `Rdt.run` to build your models:
 Rdt.run
 ```
 
+You can also build only selected SQL models or skip specific files:
+
+```ruby
+# Build only a subset of models by file name(s)
+Rdt.run_only(only: ["example_cleaned", "example_deduplicated"])
+
+# Build everything except the specified model(s)
+Rdt.run_except(except: "example_model")
+```
+
 
 ## Resources from the Extractor gem
 Basic steps to clean, deduplicate and model Extractor results:
