@@ -7,20 +7,24 @@ module Rdt
         schema = custom_schema || Rdt.settings["schema"] || Rdt::SCHEMA
         ActiveRecord::Base.connection.execute "CREATE SCHEMA IF NOT EXISTS #{schema}"
         all_file_paths = Dir.glob(glob_path)
+        all_models = all_file_paths.map { |fp| Model.new(fp, schema) }
+        all_dependencies = all_models.to_h { |m| [m.name, m.refs] }
+
+        check_if_all_refs_have_sql_files(all_dependencies)
+
         file_paths = filter_file_paths(all_file_paths, include: include, exclude: exclude)
+        models_by_path = all_models.to_h { |m| [m.filepath, m] }
+        selected_models = file_paths.map { |fp| models_by_path[fp] }
+        selected_names = selected_models.map(&:name).to_set
 
-        models = file_paths.map { |fp| Model.new(fp, schema) }
-        model_names = models.map(&:name)
-        dependencies = models.to_h do |m|
-          [m.name, m.refs.select { |ref| model_names.include?(ref) }]
-        end
+        validate_selected_model_dependencies!(selected_models, all_dependencies, selected_names)
 
-        check_if_all_refs_have_sql_files(dependencies)
-        graph = Dagwood::DependencyGraph.new dependencies
-        md = Mermaid.markdown_for dependencies
+        selected_dependencies = selected_models.to_h { |m| [m.name, m.refs] }
+
+        md = Mermaid.markdown_for(all_dependencies)
         Mermaid.generate_file md
-        graph.order.each do |model_name|
-          models.find { |m| m.name == model_name }.build
+        Dagwood::DependencyGraph.new(selected_dependencies).order.each do |model_name|
+          selected_models.find { |m| m.name == model_name }.build
         end
       end
 
@@ -48,6 +52,16 @@ module Rdt
           sem_arquivo = (value || []) - dependencies.keys
           unless sem_arquivo.empty?
             raise "Missing .sql model files for ref #{sem_arquivo} in model #{key}"
+          end
+        end
+      end
+
+      def validate_selected_model_dependencies!(selected_models, all_dependencies, selected_names)
+        selected_models.each do |model|
+          missing = model.refs - selected_names.to_a
+          unless missing.empty?
+            raise "Selected model #{model.name} depends on missing refs #{missing}" \
+              "; include those refs or omit #{model.name} from run_only"
           end
         end
       end

@@ -34,6 +34,34 @@ class RunnerTest < Minitest::Test
     assert_equal [@file_a, @file_b], selected
   end
 
+  def test_validate_dependencies_fails_when_model_ref_is_missing
+    missing_dependency = ["a"]
+    dependencies = { "a" => ["b"] }
+
+    error = assert_raises(RuntimeError) do
+      Rdt::Runner.send(:check_if_all_refs_have_sql_files, dependencies)
+    end
+
+    assert_match(/Missing \.sql model files for ref \["b"\] in model a/, error.message)
+  end
+
+  def test_validate_dependencies_passes_when_all_refs_present
+    dependencies = { "a" => ["b"], "b" => [] }
+
+    Rdt::Runner.send(:check_if_all_refs_have_sql_files, dependencies)
+    assert true
+  end
+
+  def test_validate_selected_model_dependencies_accepts_set_for_selected_names
+    model_a = Struct.new(:name, :refs).new("a", ["a"])
+
+    selected_models = [model_a]
+    selected_names = Set["a"]
+
+    Rdt::Runner.send(:validate_selected_model_dependencies!, selected_models, {}, selected_names)
+    assert true
+  end
+
   def test_filter_file_paths_raises_when_file_missing
     error = assert_raises(ArgumentError) do
       Rdt::Runner.send(:filter_file_paths, [@file_a], include: ["missing"], exclude: nil)
